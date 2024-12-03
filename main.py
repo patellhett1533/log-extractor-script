@@ -8,41 +8,54 @@ def parse_log_file(log_file):
     endpoint_access_count = defaultdict(int)
     failed_login_attempts = defaultdict(int)
 
+    # Regular expression to match log entries
     log_pattern = re.compile(
         r'(?P<ip>\d+\.\d+\.\d+\.\d+).*"(?P<method>[A-Z]+) (?P<endpoint>/\S*) HTTP/\d\.\d".* (?P<status>\d+) \d+')
 
+    # Read the log file line by line
     with open(log_file, 'r') as file:
         for line in file:
+            # Extract relevant information from each log entry
             match = log_pattern.search(line)
             if match:
+                # extract ip, endpoint and status from log
                 ip = match.group('ip')
                 endpoint = match.group('endpoint')
                 status = int(match.group('status'))
 
+                # update counts for ip and endpoint access
                 ip_request_count[ip] += 1
                 endpoint_access_count[endpoint] += 1
 
+                # update count for failed login attempts
                 if status == 401:
                     failed_login_attempts[ip] += 1
 
     return ip_request_count, endpoint_access_count, failed_login_attempts
 
 
+# Function to find the most accessed endpoint
 def find_most_accessed_endpoint(endpoint_access_count):
+    # Find the endpoint with the highest access count
     most_accessed_endpoint = max(
         endpoint_access_count, key=endpoint_access_count.get)
     return most_accessed_endpoint, endpoint_access_count[most_accessed_endpoint]
 
 
+# Function to detect suspicious activity
 def detect_suspicious_activity(failed_login_attempts):
+    # Filter out IP addresses with failed login attempts
     suspicious_ips = {ip: count for ip,
                       count in failed_login_attempts.items() if count > 0}
     return suspicious_ips
 
 
+# Function to save results to a CSV file
 def save_results_to_csv(ip_request_count, most_accessed_endpoint, endpoint_access_count, suspicious_ips, output_file):
     with open(output_file, 'w', newline='') as file:
         writer = csv.writer(file)
+
+        # Write the results to the CSV file in a readable format
         writer.writerow(['IP Address', 'Request Count'])
         for ip, count in sorted(ip_request_count.items(), key=lambda x: x[1], reverse=True):
             writer.writerow([ip, count])
@@ -63,6 +76,7 @@ def main():
     log_file = 'sample.log'
     output_file = 'log_analysis_results.csv'
 
+    # Parse the log file and store the results in dictionaries
     ip_request_count, endpoint_access_count, failed_login_attempts = parse_log_file(
         log_file)
     most_accessed_endpoint = find_most_accessed_endpoint(endpoint_access_count)
@@ -83,6 +97,7 @@ def main():
     else:
         print("No suspicious activity detected.")
 
+    # Save the results to a CSV file
     save_results_to_csv(ip_request_count, most_accessed_endpoint,
                         endpoint_access_count, suspicious_ips, output_file)
     print(f"\nResults saved to {output_file}")
